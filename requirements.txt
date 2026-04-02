@@ -1,0 +1,32 @@
+# --- Core Deep Learning & Audio ---
+torch==2.10.0+cu130
+torchaudio==2.10.0+cu130
+torchvision==0.25.0+cu130
+transformers==5.3.0
+audiomentations==0.43.1
+librosa==0.11.0
+soundfile==0.13.1
+soxr==0.5.0.post1
+
+# --- Data Processing & ML Utils ---
+numpy==2.3.5
+pandas==3.0.1
+scikit-learn==1.8.0
+scipy==1.17.1
+datasets==4.7.0
+tqdm==4.67.3
+
+# --- Visualization ---
+matplotlib==3.10.8
+seaborn==0.13.2
+
+# --- Environment & Infrastructure ---
+huggingface_hub==1.8.0
+tokenizers==0.22.2
+safetensors==0.7.0
+accelerate>=0.30.0
+protobuf==7.34.0
+
+# --- Jupyter Runtime (Optional but recommended) ---
+ipykernel==7.2.0
+ipython==9.11.0
