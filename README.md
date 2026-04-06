@@ -51,12 +51,6 @@ To bridge the gap between "Lab" and "Wild", we implemented:
 
 ---
 
-## 📈 4. Performance Metrics
-
----
-
----
-
 ## 🎯 4. Performance Metrics & Benchmarks
 
 The model was evaluated using two distinct methodologies: **In-Distribution Validation** (Master Protocol Test Set) and **Out-of-Distribution (OOD) Stress Testing** (External Fake-or-Real Benchmarks).
