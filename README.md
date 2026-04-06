@@ -92,5 +92,4 @@ This research and model development would not be possible without the open-sourc
 * **Special Thanks**: To the creators of **LJSpeech** and **JSUT** official corpora for providing the high-fidelity authentic references used in our WF-Enhanced protocol.
 
 ---
----
 © 2026 FinQuest AI Defense Taskforce. Powered by Wav2Vec 2.0.
