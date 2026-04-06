@@ -80,4 +80,17 @@ This model serves as the **Neural Foundation** for a multi-stage intervention pi
 4.  **Intervention**: Triggers **Encrypted Risk Tokens (ERT)** for interbank mule-account freezing.
 
 ---
+
+## 🤝 Acknowledgements
+
+This research and model development would not be possible without the open-source contributions of the following organizations and researchers. We express our gratitude for their high-quality datasets:
+
+* **Fake-or-Real (FoR) Dataset**: Provided by [Mohammed Abdel-Dayem et al.](https://www.kaggle.com/datasets/mohammedabdeldayem/the-fake-or-real-dataset), offering a critical multi-scenario benchmark for synthetic speech detection.
+* **WaveFake Dataset**: A massive cross-generator corpus by [Frank et al.](https://github.com/nii-yamagishilab/WaveFake), which was instrumental in training our model to generalize across multiple TTS architectures.
+* **ASVspoof 2019**: We thank the [ASVspoof Consortium](https://www.asvspoof.org/index2019.html) for their foundational work in standardizing the evaluation of spoofing countermeasures.
+* **In-the-Wild Dataset**: Gratitude to the researchers of the [In-the-Wild project](https://github.com/asvspoof-challenge/2021) for providing real-world deepfake samples that bridge the gap between laboratory and reality.
+* **Special Thanks**: To the creators of **LJSpeech** and **JSUT** official corpora for providing the high-fidelity authentic references used in our WF-Enhanced protocol.
+
+---
+---
 © 2026 FinQuest AI Defense Taskforce. Powered by Wav2Vec 2.0.
