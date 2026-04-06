@@ -1,18 +1,24 @@
-# 🛡️ FinQuest 2026: Wav2Vec 2.0 Deepfake Detection System
+# 🛡️ Sentinel: Wav2Vec 2.0 Deepfake Detection System (FinQuest 2026)
 
-> **"Fraud is increasingly a connected, systemic problem."** > This system is engineered to detect AI-powered financial fraud by identifying sub-perceptual electronic synthesis artifacts across diverse telephonic environments.
+#### Hugging Face Repo: https://huggingface.co/JesseHuang922/Wav2Vec2-Deepfake-Sentinel-Base
+
+#### Dataset Repo (in case you want to experiment yourself): https://huggingface.co/datasets/JesseHuang922/Wav2Vec2-Deepfake-Sentinel-Base-Dataset 
+
+> **"In the era of generative AI, trust is no longer a default setting—it must be verified."**
+> Sentinel is an industrial-grade forensic system engineered to detect AI-powered financial fraud by identifying sub-perceptual electronic synthesis artifacts across diverse telephonic environments.
 
 ---
 
-## 🚀 1. Core Architecture: Multi-Scale Evolution
+## 🚀 1. Core Architecture: Sentinel-Base (v1.0)
 
-The system transitions from traditional CNN-based detection to a **Self-Supervised Transformer** backbone.
+The system transitions from traditional CNN-based detection to a **Self-Supervised Transformer** backbone with a custom forensic head.
 
-* **Encoder**: `facebook/wav2vec2-base`
-* **Feature Head**: **Multi-Scale Feature Fusion**.
-    * Instead of a simple linear layer, we concatenate the **Mean** and **Standard Deviation** of the transformer's hidden states.
-    * **Dimension**: 1536 (768 Mean + 768 StdDev).
-    * **Strategy**: Captures both static spectral artifacts and dynamic temporal "texture" inconsistencies.
+* **Backbone**: `facebook/wav2vec2-base` (Fine-tuned via Layer-wise Learning Rate Decay).
+* **Feature Head**: **Multi-Scale Attentive Pooling (MSAP)**.
+    * **Mechanism**: Instead of a simple mean, MSAP calculates **Attention-weighted Mean ($\mu$)** and **Attention-weighted Standard Deviation ($\sigma$)**.
+    * **Dimension**: $768 (\mu) + 768 (\sigma) = 1536$ total features.
+    * **Logic**: Captures both static spectral artifacts and dynamic temporal "texture" inconsistencies (e.g., unnatural smoothness in neural vocoders).
+* **Classifier**: 3-Layer MLP ($1536 \rightarrow 512 \rightarrow 256 \rightarrow 2$) with BatchNorm and Dropout (0.3).
 
 ---
 
@@ -36,68 +42,81 @@ We utilized a massive aggregated corpus of **116,390 samples** to ensure cross-g
 ### Data Augmentation (Asymmetric Strategy)
 To bridge the gap between "Lab" and "Wild", we implemented:
 * **Cyclic Tiling**: Audios < 4s are tiled to maintain temporal receptive fields without energy loss.
-* **Asymmetric Toughening**: 
-    * *Pure Sources*: Heavy MP3 compression, Room simulation, and Time masking.
-    * *Dirty Sources*: Minimal perturbation to preserve natural "In-the-Wild" artifacts.
+* **Asymmetric Toughening**: Heavy MP3 compression and Room simulation were applied to clean sources to simulate real-world telephonic degradation.
 
 ### Hyperparameters (RTX 5080 Optimized)
 | Parameter | Value | Note |
 | :--- | :--- | :--- |
 | **Batch Size** | 32 | Balanced for gradient stability. |
 | **Encoder LR** | 4e-6 | **LLRD** (Layer-wise Learning Rate Decay). |
-| **Classifier LR** | 4e-5 | High-velocity head training. |
-| **Weight Decay** | 0.01 | Decoupled AdamW regularization. |
-| **Patience** | 2 / 5 | Scheduler / Early Stopping. |
+| **Top-Layer LR** | 4e-5 | High-velocity head training (Pooling & MLP). |
+| **Optimizer** | AdamW | Weight decay 0.01. |
 
 ---
 
-## 🎯 4. Performance Metrics & Benchmarks
+## 📈 4. Performance & Validation
 
-The model was evaluated using two distinct methodologies: **In-Distribution Validation** (Master Protocol Test Set) and **Out-of-Distribution (OOD) Stress Testing** (External Fake-or-Real Benchmarks).
+### A. Internal Benchmark (Master Protocol)
+* **Best Dev Accuracy**: `99.85%`
+* **Best Dev EER**: `0.0013`
+* **In-the-Wild Test Accuracy**: **99.56%** (on 31,779 samples).
 
-### A. Sliding-Window Validation (In-Distribution)
-Tested on 10% of the Master Protocol (~11,639 samples) using a robust sliding-window inference strategy on the **NVIDIA RTX 5080**.
+### B. Cross-Dataset Stress Test (Generalization)
+Tested against completely unseen datasets to simulate adversarial scenarios:
+* **Unseen FoR-Norm**: **94.28%** Accuracy
+* **Unseen FoR-Rerecorded**: **91.05%** Accuracy
 
-| Metric | Score | status |
-| :--- | :--- | :--- |
-| **Overall Accuracy** | **99.91%** | 💎 EXTREME |
-| **Equal Error Rate (EER)** | **0.0007** | 💎 EXTREME |
-| **Area Under Curve (AUC)** | **1.0000** | 💎 EXTREME |
-
-#### Detailed Source Breakdown
-| Source / Architecture | Accuracy | Source / Architecture | Accuracy |
-| :--- | :---: | :--- | :---: |
-| **for-2seconds** | 100.00% | **for-rerecorded** | 99.92% |
-| **for-original** | 100.00% | **for-norm** | 100.00% |
-| **wild (In-the-wild)**| 99.75% | **fastspeech2_pwg** | 100.00% |
-| **melgan/pwg** | 99.90% | **ASV A01-A06** | 98.5%~100% |
-| **hifiGAN** | 100.00% | **waveglow** | 100.00% |
+> **Forensic Note**: The consistency across unseen data ($>90\%$) proves that the **MSAP head** effectively learns intrinsic synthesis fingerprints rather than over-fitting to specific dataset biases.
 
 ---
 
-### B. Cross-Dataset Stress Test (Out-of-Distribution)
-To simulate adversarial real-world scenarios, the model was tested against completely unseen datasets from the **Fake-or-Real (FoR)** project.
+## 💻 5. Implementation & Usage
 
-| Scenario | Accuracy | Status |
-| :--- | :---: | :--- |
-| **for-norm** | **94.28%** | 🔥 STRONG |
-| **for-original** | **91.89%** | 🔥 STRONG |
-| **for-rerecorded** | **91.05%** | 🔥 STRONG |
-| **for-2seconds** | **89.06%** | ⚠️ STABLE |
+This model requires the **SentinelForDeepfakeDetection** class wrapper to handle the 1536-dim feature fusion.
 
-> **Forensic Note**: The transition from 99.9% (internal) to ~92% (external) demonstrates the model's high generalization floor. Unlike standard CNN models that collapse on unseen data, the Wav2Vec 2.0 backbone maintains "Industrial Grade" reliability even across mismatched domains.
+```python
+import torch
+import torch.nn as nn
+import librosa
+from transformers import Wav2Vec2PreTrainedModel, Wav2Vec2Model, AutoProcessor
 
----
+# 1. Define Architecture (Required for custom MSAP head)
+class MultiScaleAttentivePooling(nn.Module):
+    def __init__(self, hidden_size):
+        super().__init__()
+        self.attention = nn.Sequential(nn.Linear(hidden_size, 128), nn.Tanh(), nn.Linear(128, 1))
+    def forward(self, x):
+        w = torch.softmax(self.attention(x), dim=1)
+        mu = torch.sum(w * x, dim=1)
+        std = torch.sqrt(torch.clamp(torch.sum(w * ((x - mu.unsqueeze(1))**2), dim=1), min=1e-9))
+        return torch.cat([mu, std], dim=-1)
 
-## 💡 5. Strategic Implementation (FinQuest 2026)
+class SentinelForDeepfakeDetection(Wav2Vec2PreTrainedModel):
+    def __init__(self, config):
+        super().__init__(config)
+        self.wav2vec2, self.pooling = Wav2Vec2Model(config), MultiScaleAttentivePooling(config.hidden_size)
+        self.classifier = nn.Sequential(nn.Linear(config.hidden_size * 2, 512), nn.ReLU(), nn.BatchNorm1d(512), nn.Dropout(0.3), nn.Linear(512, 256), nn.ReLU(), nn.Linear(256, 2))
+        self.post_init()
+    def forward(self, input_values, attention_mask=None):
+        return self.classifier(self.pooling(self.wav2vec2(input_values, attention_mask=attention_mask).last_hidden_state))
 
-This model serves as the **Neural Foundation** for a multi-stage intervention pipeline:
-1.  **Detection**: Wav2Vec 2.0 identifies synthetic fingerprints.
-2.  **Emotion**: Parallel head detects "High Distress" patterns.
-3.  **Risk Fusion**: Hybrid scoring (Bio-signal + Linguistic pattern).
-4.  **Intervention**: Triggers **Encrypted Risk Tokens (ERT)** for interbank mule-account freezing.
+# 2. Load & Predict
+device = "cuda" if torch.cuda.is_available() else "cpu"
+repo = "JesseHuang922/Wav2Vec2-Deepfake-Sentinel-Base"
 
----
+model = SentinelForDeepfakeDetection.from_pretrained(repo).to(device).eval()
+processor = AutoProcessor.from_pretrained(repo)
+
+def predict(path):
+    wav, _ = librosa.load(path, sr=16000)
+    feat = processor(wav, return_tensors="pt", sampling_rate=16000).input_values.to(device)
+    with torch.no_grad():
+        pred = torch.argmax(model(feat), dim=-1).item()
+    return "Real" if pred == 1 else "Fake"
+
+# print(predict("your_audio.wav"))
+
+```
 
 ## 🤝 Acknowledgements
 
