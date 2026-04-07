@@ -72,7 +72,7 @@ Tested against completely unseen datasets to simulate adversarial scenarios:
 
 ## 💻 5. Implementation & Usage
 
-This model requires the **SentinelForDeepfakeDetection** class wrapper to handle the 1536-dim feature fusion.
+This model requires the **SentinelForSyntheticDetection** class wrapper to handle the 1536-dim feature fusion.
 
 ```python
 import torch
@@ -102,7 +102,7 @@ class MultiScaleAttentivePooling(nn.Module):
         std = torch.sqrt(torch.clamp(var, min=1e-9))
         return torch.cat([mu, std], dim=-1) # (batch, hidden_size * 2)
 
-class SentinelForDeepfakeDetection(Wav2Vec2PreTrainedModel):
+class SentinelForSyntheticDetection(Wav2Vec2PreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.wav2vec2 = Wav2Vec2Model(config)
@@ -117,8 +117,10 @@ class SentinelForDeepfakeDetection(Wav2Vec2PreTrainedModel):
             nn.Linear(256, 2)
         )
         self.post_init()
+
     def forward(self, input_values, attention_mask=None):
         outputs = self.wav2vec2(input_values, attention_mask=attention_mask)
+        # Using last_hidden_state (Batch, Seq_Len, Hidden_Size)
         pooled_output = self.pooling(outputs.last_hidden_state)
         return self.classifier(pooled_output)
 
@@ -129,7 +131,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 repo = "JesseHuang922/VoxSentinel-Base"
 
 # Load model and processor from Hugging Face
-model = SentinelForDeepfakeDetection.from_pretrained(repo).to(device).eval()
+model = SentinelForSyntheticDetection.from_pretrained(repo).to(device).eval()
 processor = AutoProcessor.from_pretrained(repo)
 
 def predict(audio_path):
