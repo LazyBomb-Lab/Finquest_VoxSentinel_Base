@@ -1,6 +1,6 @@
-# 🛡️ Sentinel: Wav2Vec 2.0 Deepfake Detection System (FinQuest 2026)
+# 🛡️ Sentinel: VoxSentinel-Base(FinQuest 2026)
 
-#### Hugging Face Repo: https://huggingface.co/JesseHuang922/Wav2Vec2-Deepfake-Sentinel-Base
+#### Hugging Face Repo: https://huggingface.co/JesseHuang922/VoxSentinel-Base
 
 #### Dataset Repo (in case you want to experiment yourself): https://huggingface.co/datasets/JesseHuang922/Wav2Vec2-Deepfake-Sentinel-Base-Dataset 
 
@@ -78,43 +78,92 @@ This model requires the **SentinelForDeepfakeDetection** class wrapper to handle
 import torch
 import torch.nn as nn
 import librosa
+import numpy as np
 from transformers import Wav2Vec2PreTrainedModel, Wav2Vec2Model, AutoProcessor
 
-# 1. Define Architecture (Required for custom MSAP head)
+# ==============================================================================
+# 1. Architecture Definition (Required for custom MSAP head)
+# ==============================================================================
 class MultiScaleAttentivePooling(nn.Module):
     def __init__(self, hidden_size):
         super().__init__()
-        self.attention = nn.Sequential(nn.Linear(hidden_size, 128), nn.Tanh(), nn.Linear(128, 1))
+        self.attention = nn.Sequential(
+            nn.Linear(hidden_size, 128), 
+            nn.Tanh(), 
+            nn.Linear(128, 1)
+        )
     def forward(self, x):
+        # x shape: (batch, seq_len, hidden_size)
         w = torch.softmax(self.attention(x), dim=1)
         mu = torch.sum(w * x, dim=1)
-        std = torch.sqrt(torch.clamp(torch.sum(w * ((x - mu.unsqueeze(1))**2), dim=1), min=1e-9))
-        return torch.cat([mu, std], dim=-1)
+        # Robust variance calculation
+        delta = x - mu.unsqueeze(1)
+        var = torch.sum(w * (delta**2), dim=1)
+        std = torch.sqrt(torch.clamp(var, min=1e-9))
+        return torch.cat([mu, std], dim=-1) # (batch, hidden_size * 2)
 
 class SentinelForDeepfakeDetection(Wav2Vec2PreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
-        self.wav2vec2, self.pooling = Wav2Vec2Model(config), MultiScaleAttentivePooling(config.hidden_size)
-        self.classifier = nn.Sequential(nn.Linear(config.hidden_size * 2, 512), nn.ReLU(), nn.BatchNorm1d(512), nn.Dropout(0.3), nn.Linear(512, 256), nn.ReLU(), nn.Linear(256, 2))
+        self.wav2vec2 = Wav2Vec2Model(config)
+        self.pooling = MultiScaleAttentivePooling(config.hidden_size)
+        self.classifier = nn.Sequential(
+            nn.Linear(config.hidden_size * 2, 512), 
+            nn.ReLU(), 
+            nn.BatchNorm1d(512), 
+            nn.Dropout(0.3), 
+            nn.Linear(512, 256), 
+            nn.ReLU(), 
+            nn.Linear(256, 2)
+        )
         self.post_init()
     def forward(self, input_values, attention_mask=None):
-        return self.classifier(self.pooling(self.wav2vec2(input_values, attention_mask=attention_mask).last_hidden_state))
+        outputs = self.wav2vec2(input_values, attention_mask=attention_mask)
+        pooled_output = self.pooling(outputs.last_hidden_state)
+        return self.classifier(pooled_output)
 
-# 2. Load & Predict
+# ==============================================================================
+# 2. Inference Logic (Forensic Grade)
+# ==============================================================================
 device = "cuda" if torch.cuda.is_available() else "cpu"
-repo = "JesseHuang922/Wav2Vec2-Deepfake-Sentinel-Base"
+repo = "JesseHuang922/VoxSentinel-Base"
 
+# Load model and processor from Hugging Face
 model = SentinelForDeepfakeDetection.from_pretrained(repo).to(device).eval()
 processor = AutoProcessor.from_pretrained(repo)
 
-def predict(path):
-    wav, _ = librosa.load(path, sr=16000)
-    feat = processor(wav, return_tensors="pt", sampling_rate=16000).input_values.to(device)
-    with torch.no_grad():
-        pred = torch.argmax(model(feat), dim=-1).item()
-    return "Real" if pred == 1 else "Fake"
+def predict(audio_path):
+    """
+    Forensic prediction with automatic channel mixing and resampling.
+    """
+    # 1. Load with mono=True: Automatically mixes stereo to mono (L+R)/2
+    # 2. sr=16000: Forces resampling to the model's native frequency
+    try:
+        wav, _ = librosa.load(audio_path, sr=16000, mono=True)
+        
+        # Simple Voice Activity Detection (Optional: trims silence)
+        wav, _ = librosa.effects.trim(wav, top_db=20)
 
-# print(predict("your_audio.wav"))
+        # Preprocess features
+        inputs = processor(wav, return_tensors="pt", sampling_rate=16000)
+        input_values = inputs.input_values.to(device)
+
+        with torch.no_grad():
+            logits = model(input_values)
+            # Softmax to get confidence scores
+            probs = torch.softmax(logits, dim=-1)
+            pred_idx = torch.argmax(probs, dim=-1).item()
+            confidence = probs[0][pred_idx].item()
+
+        # Label Mapping: 1 -> Real, 0 -> Fake
+        result = "Real" if pred_idx == 1 else "Fake"
+        return f"Result: {result} ({confidence:.2%} confidence)"
+
+    except Exception as e:
+        return f"Error processing {audio_path}: {e}"
+
+# Usage Example:
+# print(predict("evidence_stereo_file.mp3"))
 
 ```
 
