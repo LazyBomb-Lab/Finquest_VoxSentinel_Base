@@ -4,6 +4,16 @@
 
 #### Dataset Repo (in case you want to experiment yourself): https://huggingface.co/datasets/JesseHuang922/Wav2Vec2-Deepfake-Sentinel-Base-Dataset 
 
+## 🔍 Executive Overview
+
+As generative voice cloning reaches human-level parity, synthetic speech has become a primary vector for high-stakes financial fraud, vishing (voice phishing), and biometric spoofing. Traditional anti-spoofing models often fail in real-world deployment due to channel degradation, compression artifacts, and overfitting to known Text-to-Speech (TTS) generators.
+
+**VoxSentinel-Base** addresses this gap with a forensic-first design built specifically for **FinQuest 2026**:
+* **Beyond Surface Acoustics**: Leverages a self-supervised `Wav2Vec 2.0` backbone paired with a custom **Multi-Scale Attentive Pooling (MSAP)** head to capture both static spectral anomalies and dynamic temporal variance ($\mu + \sigma$).
+* **Built for the "Wild"**: Trained on the **116k Master Protocol (v2)** using an **Asymmetric Toughening** regime (heavy MP3 compression & room impulse simulation), ensuring resilience against noisy telephonic and rerecorded channels.
+* **Proven Generalization**: Achieves **99.56% accuracy** on in-the-wild benchmarks while maintaining **>91% cross-dataset accuracy** on completely unseen adversarial scenarios.
+
+
 > **"In the era of generative AI, trust is no longer a default setting—it must be verified."**
 > Sentinel is an industrial-grade forensic system engineered to detect AI-powered financial fraud by identifying sub-perceptual electronic synthesis artifacts across diverse telephonic environments.
 
